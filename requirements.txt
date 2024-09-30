@@ -1,0 +1,15 @@
+# Flask==2.3.3
+# Pillow==10.0.0
+# numpy==1.24.4
+# onnxruntime==1.16.0
+fastapi
+uvicorn
+celery[redis]
+redis
+flower
+pillow
+numpy
+onnxruntime
+python-multipart
+locust
+slowapi

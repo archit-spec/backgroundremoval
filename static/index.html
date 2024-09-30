@@ -1,0 +1,89 @@
+<!-- static/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Removal App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        h1 { color: #333; }
+        #imagePreview { margin-top: 20px; }
+        #imagePreview img { max-width: 200px; margin: 10px; }
+        #results { margin-top: 20px; }
+        .result-image { max-width: 300px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Upload images to remove background</h1>
+    <form id="uploadForm">
+        <input type="file" name="files" multiple onchange="previewImages(event)">
+        <button type="submit">Upload and Process</button>
+    </form>
+    <div id="imagePreview"></div>
+    <div id="results"></div>
+
+    <script>
+        function previewImages(event) {
+            var preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            var files = event.target.files;
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var reader = new FileReader();
+                
+                reader.onload = (function(file) {
+                    return function(e) {
+                        var img = document.createElement('img');
+                        img.src = e.target.result;
+                        preview.appendChild(img);
+                    };
+                })(file);
+                
+                reader.readAsDataURL(file);
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('/remove-background', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            pollResults(data.tasks);
+        });
+
+        function pollResults(tasks) {
+            tasks.forEach(task => {
+                const intervalId = setInterval(async () => {
+                    const response = await fetch(`/task/${task[1]}`);
+                    const data = await response.json();
+                    if (data.status === 'completed') {
+                        clearInterval(intervalId);
+                        displayResult(task[0], data.result);
+                    }
+                }, 1000);
+            });
+        }
+
+        function displayResult(filename, base64Image) {
+            const resultsDiv = document.getElementById('results');
+            const img = document.createElement('img');
+            img.src = `data:image/png;base64,${base64Image}`;
+            img.alt = filename;
+            img.className = 'result-image';
+            resultsDiv.appendChild(img);
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = `data:image/png;base64,${base64Image}`;
+            downloadLink.download = `${filename}_processed.png`;
+            downloadLink.textContent = `Download ${filename}`;
+            resultsDiv.appendChild(downloadLink);
+            resultsDiv.appendChild(document.createElement('br'));
+        }
+    </script>
+</body>
+</html>
